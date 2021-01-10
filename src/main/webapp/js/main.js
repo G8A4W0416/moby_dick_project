@@ -1,93 +1,98 @@
-document.querySelectorAll(".drop-area-input").forEach(inputElement => {
-    const dropAreaElement = inputElement.closest(".drop-area");
+async function loadStopWords() {
+    const response = await fetch('stop-words.txt');
+    return (await response.text()).split('\n\n');
+}
 
-    dropAreaElement.addEventListener("click", e => {
-        inputElement.click();
-    });
+document.addEventListener("DOMContentLoaded", async () => {
+    let stopWords = [];
 
-    inputElement.addEventListener("change", e => {
-       if (inputElement.files.length) {
-           updateThumbnail(dropAreaElement, inputElement.files[0]);
+    try {
+        stopWords = await loadStopWords();
+    } catch (e) {
+        console.log("Error!");
+        console.log(e);
+    }
 
+    document.querySelectorAll(".drop-area-input").forEach(inputElement => {
+        const dropAreaElement = inputElement.closest(".drop-area");
 
-       }
-    });
+        dropAreaElement.addEventListener("click", () => {
+            inputElement.click();
+        });
 
-    dropAreaElement.addEventListener("dragover", e => {
-        e.preventDefault();
-        dropAreaElement.classList.add("drop-area-over");
-    });
+        inputElement.addEventListener("change", () => {
+            if (inputElement.files.length) {
+                updateFreqWords(inputElement.files[0]);
+            }
+        });
 
-    // dragend runs whenever you cancel the drag action, for example, pressing the escape key to cancel the drag
-    ["dragleave", "dragend"].forEach(type => {
-        dropAreaElement.addEventListener(type, e => {
+        dropAreaElement.addEventListener("dragover", () => {
+            e.preventDefault();
+            dropAreaElement.classList.add("drop-area-over");
+        });
+
+        // dragend runs whenever you cancel the drag action, for example, pressing the escape key to cancel the drag
+        ["dragleave", "dragend"].forEach(type => {
+            dropAreaElement.addEventListener(type, () => {
+                dropAreaElement.classList.remove("drop-area-over");
+            });
+        });
+
+        dropAreaElement.addEventListener("drop", e => {
+            e.preventDefault();
+            if (e.dataTransfer.files.length) {
+                inputElement.files = e.dataTransfer.files;
+                updateFreqWords(e.dataTransfer.files[0]);
+            }
+
             dropAreaElement.classList.remove("drop-area-over");
         });
     });
 
-    dropAreaElement.addEventListener("drop", e => {
-        e.preventDefault();
-        if (e.dataTransfer.files.length) {
-            inputElement.files = e.dataTransfer.files;
-            updateThumbnail(dropAreaElement, e.dataTransfer.files[0]);
-        }
+    /**
+     * Updates frequently used words after dropping file
+     *
+     * @param {File} file
+     */
+    function updateFreqWords(file) {
+        let fr = new FileReader();
+        fr.onload = (e) => {
+            const regexpWords = /\b\w+\b/g;
 
-        dropAreaElement.classList.remove("drop-area-over");
-    });
-});
+            let wordArray = e.target.result.match(regexpWords).map(function(value) {
+                return value.toLowerCase();
+            }).filter(function(word) { return !stopWords.includes(word)}).sort();
 
-/**
- * Updates the thumbnail on a drop zone element.
- *
- * @param {HTMLElement} dropAreaElement
- * @param {File} file
- */
-function updateThumbnail(dropAreaElement, file) {
-    let fr = new FileReader();
-    fr.onload = (e) => {
-        const regexpWords = /\b\w+\b/g;
-        let wordArray = e.target.result.match(regexpWords).map(function(value) {
-            return value.toLowerCase();
-        }).sort();
+            let wordCountObj = {};
 
-        let current = null;
-        let wordCount = 0;
-        let wordCountArr = [];
-        wordArray.forEach(function (i) {
-           if (i != current) {
-               if (wordCount > 0) {
-                  let wordCountObj = {};
-                  wordCountObj.word = current;
-                  wordCountObj.count = wordCount;
-                  wordCountArr.push(wordCountObj);
-               }
-               current = i;
-               wordCount = 1;
-           } else {
-               wordCount++;
-           }
-        });
-        console.log(wordCountArr);
+            wordArray.forEach(function (value) {
+                wordCountObj[value] = (wordCountObj[value] || 0) + 1;
+            });
 
-        wordCountArr.sort((a,b) => b.count - a.count);
-
-        let wordArrayLength = wordArray.length;
-        console.log(wordCountArr);
-
-        const freqUsedWordsNbr = 5;
-        let freqUsedWordsStr = "<strong>" + escape(file.name) + "</strong> \n\n";
-
-        wordCountArr.forEach((e,index) => {
-            if (index < freqUsedWordsNbr) {
-                freqUsedWordsStr += e.word + ": " + e.count + "\n";
+            let sortWordsByCountArr = []
+            for (let word in wordCountObj) {
+                sortWordsByCountArr.push([word, wordCountObj[word]]);
             }
 
-        });
-        document.getElementById('output').innerHTML = freqUsedWordsStr;
+            sortWordsByCountArr.sort(function(a, b) {
+                return b[1] - a[1];
+            });
+
+            // TODO: Total word length may be used in generating graphic for frequently used words
+            let wordArrayLength = wordArray.length;
+
+            const FREQ_NBR = 100;
+            let freqUsedWordsStr = "<strong>" + escape(file.name) + "</strong> \n\n";
+
+            sortWordsByCountArr.forEach((e,index) => {
+                if (index < FREQ_NBR) {
+                    freqUsedWordsStr += e[0] + ": " + e[1] + "\n";
+                }
+
+            });
+            document.getElementById('output').innerHTML = freqUsedWordsStr;
+        }
+
+        fr.readAsText(file);
     }
-
-    fr.readAsText(file);
-
-
-
-}
+});
