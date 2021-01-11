@@ -90,17 +90,17 @@ document.addEventListener("DOMContentLoaded", async () => {
                 }
             });
 
-            generateScatterPlot(freqUsedWordsArr);
+            generateChart(freqUsedWordsArr);
         }
 
         fr.readAsText(file);
     }
 
-    function generateScatterPlot(data) {
+    function generateChart(data) {
         // set the dimensions and margins of the graph
-        let margin = {top: 10, right: 30, bottom: 30, left: 60},
-            width = 1280 - margin.left - margin.right,
-            height = 400 - margin.top - margin.bottom;
+        let margin = {top: 20, right: 30, bottom: 40, left: 90},
+            width = 460 - margin.left - margin.right,
+            height = 5000 - margin.top - margin.bottom;
 
         // append the svg object to the body of the page
         let svg = d3.select("#my-dataviz")
@@ -112,31 +112,23 @@ document.addEventListener("DOMContentLoaded", async () => {
                 "translate(" + margin.left + "," + margin.top + ")");
 
         // Add X axis
-        let x = d3.scalePoint()
-            .domain(data.map(function (d) { return d[0]; }))
+        let x = d3.scaleLinear()
+            .domain([0, d3.max(data, function (d) { return d[1] })])
             .range([0, width]);
         svg.append("g")
             .attr("transform", "translate(0," + height + ")")
-            .call(d3.axisBottom(x));
+            .call(d3.axisBottom(x))
+            .selectAll("text")
+            .attr("transform", "translate(-10,0) rotate(-45)")
+            .style("text-anchor", "end");
 
         // Add Y axis
-        let y = d3.scaleLinear()
-            .domain( [0, d3.max(data, function (d) { return d[1] })])
-            .range([ height, 0 ]);
+        let y = d3.scaleBand()
+            .range([ 0, height ])
+            .domain(data.map(function (d) { return d[0]; }))
+            .padding(.1);
         svg.append("g")
             .call(d3.axisLeft(y));
-
-        // Add the line
-        svg.append("path")
-            .datum(data)
-            .attr("fill", "none")
-            .attr("stroke", "black")
-            .attr("stroke-width", 1.5)
-            .attr("d", d3.line()
-                .curve(d3.curveBasis) // Just add that to have a curve instead of segments
-                .x(function(d) { return x(d[0]) })
-                .y(function(d) { return y(d[1]) })
-            );
 
         // create a tooltip
         let Tooltip = d3.select("#my-dataviz")
@@ -157,7 +149,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         let mousemove = function(d) {
             Tooltip
                 .html("Word Count: " + d[1])
-                .style("left", (d3.mouse(this)[0]+70) + "px")
+                .style("left", (d3.mouse(this)[0]+ 340) + "px")
                 .style("top", (d3.mouse(this)[1]) + "px");
         };
         let mouseleave = function(d) {
@@ -165,20 +157,16 @@ document.addEventListener("DOMContentLoaded", async () => {
                 .style("opacity", 0);
         };
 
-        // Add the points
-        svg
-            .append("g")
-            .selectAll("dot")
+        //Bars
+        svg.selectAll("myRect")
             .data(data)
             .enter()
-            .append("circle")
-            .attr("class", "myCircle")
-            .attr("cx", function(d) { return x(d[0]) } )
-            .attr("cy", function(d) { return y(d[1]) } )
-            .attr("r", 8)
-            .attr("stroke", "#69b3a2")
-            .attr("stroke-width", 3)
-            .attr("fill", "white")
+            .append("rect")
+            .attr("x", x(0) )
+            .attr("y", function(d) { return y(d[0]); })
+            .attr("width", function(d) { return x(d[1]); })
+            .attr("height", y.bandwidth() )
+            .attr("fill", "#69b3a2")
             .on("mouseover", mouseover)
             .on("mousemove", mousemove)
             .on("mouseleave", mouseleave);
