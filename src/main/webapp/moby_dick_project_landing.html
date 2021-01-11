@@ -4,15 +4,39 @@
     <meta charset="UTF-8">
     <title>Moby Dick Project</title>
     <link rel="stylesheet" href="css/main.css">
+    <style>
+        main {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-flow: column wrap;
+        }
+
+        h1 {
+            flex: 0 0 100%;
+            text-align: center;
+        }
+    </style>
 </head>
 <body>
-<div class="drop-area">
-    <span class="drop-area-prompt">Drop file here or click to upload</span>
-    <input type="file" name="file" class="drop-area-input">
-</div>
-<br>
+<main>
+    <h1>Moby Dick Project</h1>
 
-<pre id="output"></pre>
+    <article>
+        <summary>
+
+        </summary>
+    </article>
+
+    <div class="drop-area">
+        <span class="drop-area-prompt">Drop file here or click to upload</span>
+        <input type="file" name="file" class="drop-area-input">
+    </div>
+
+    <!-- Create a div where the graph will take place -->
+    <div id="my-dataviz"></div>
+</main>
+<script src="https://d3js.org/d3.v4.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>

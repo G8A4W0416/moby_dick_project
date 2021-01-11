@@ -22,11 +22,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         inputElement.addEventListener("change", () => {
             if (inputElement.files.length) {
+                document.getElementById("my-dataviz").innerHTML = "";
                 updateFreqWords(inputElement.files[0]);
             }
         });
 
-        dropAreaElement.addEventListener("dragover", () => {
+        dropAreaElement.addEventListener("dragover", e => {
             e.preventDefault();
             dropAreaElement.classList.add("drop-area-over");
         });
@@ -41,6 +42,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         dropAreaElement.addEventListener("drop", e => {
             e.preventDefault();
             if (e.dataTransfer.files.length) {
+                document.getElementById("my-dataviz").innerHTML = "";
                 inputElement.files = e.dataTransfer.files;
                 updateFreqWords(e.dataTransfer.files[0]);
             }
@@ -78,21 +80,107 @@ document.addEventListener("DOMContentLoaded", async () => {
                 return b[1] - a[1];
             });
 
-            // TODO: Total word length may be used in generating graphic for frequently used words
-            let wordArrayLength = wordArray.length;
-
             const FREQ_NBR = 100;
-            let freqUsedWordsStr = "<strong>" + escape(file.name) + "</strong> \n\n";
 
-            sortWordsByCountArr.forEach((e,index) => {
+            let freqUsedWordsArr = [];
+
+            sortWordsByCountArr.forEach((value,index) => {
                 if (index < FREQ_NBR) {
-                    freqUsedWordsStr += e[0] + ": " + e[1] + "\n";
+                    freqUsedWordsArr.push(value);
                 }
-
             });
-            document.getElementById('output').innerHTML = freqUsedWordsStr;
+
+            generateScatterPlot(freqUsedWordsArr);
         }
 
         fr.readAsText(file);
+    }
+
+    function generateScatterPlot(data) {
+        // set the dimensions and margins of the graph
+        let margin = {top: 10, right: 30, bottom: 30, left: 60},
+            width = 1280 - margin.left - margin.right,
+            height = 400 - margin.top - margin.bottom;
+
+        // append the svg object to the body of the page
+        let svg = d3.select("#my-dataviz")
+            .append("svg")
+            .attr("width", width + margin.left + margin.right)
+            .attr("height", height + margin.top + margin.bottom)
+            .append("g")
+            .attr("transform",
+                "translate(" + margin.left + "," + margin.top + ")");
+
+        // Add X axis
+        let x = d3.scalePoint()
+            .domain(data.map(function (d) { return d[0]; }))
+            .range([0, width]);
+        svg.append("g")
+            .attr("transform", "translate(0," + height + ")")
+            .call(d3.axisBottom(x));
+
+        // Add Y axis
+        let y = d3.scaleLinear()
+            .domain( [0, d3.max(data, function (d) { return d[1] })])
+            .range([ height, 0 ]);
+        svg.append("g")
+            .call(d3.axisLeft(y));
+
+        // Add the line
+        svg.append("path")
+            .datum(data)
+            .attr("fill", "none")
+            .attr("stroke", "black")
+            .attr("stroke-width", 1.5)
+            .attr("d", d3.line()
+                .curve(d3.curveBasis) // Just add that to have a curve instead of segments
+                .x(function(d) { return x(d[0]) })
+                .y(function(d) { return y(d[1]) })
+            );
+
+        // create a tooltip
+        let Tooltip = d3.select("#my-dataviz")
+            .append("div")
+            .style("opacity", 0)
+            .attr("class", "tooltip")
+            .style("background-color", "white")
+            .style("border", "solid")
+            .style("border-width", "2px")
+            .style("border-radius", "5px")
+            .style("padding", "5px");
+
+        // Three function that change the tooltip when user hover / move / leave a cell
+        let mouseover = function(d) {
+            Tooltip
+                .style("opacity", 1);
+        };
+        let mousemove = function(d) {
+            Tooltip
+                .html("Word Count: " + d[1])
+                .style("left", (d3.mouse(this)[0]+70) + "px")
+                .style("top", (d3.mouse(this)[1]) + "px");
+        };
+        let mouseleave = function(d) {
+            Tooltip
+                .style("opacity", 0);
+        };
+
+        // Add the points
+        svg
+            .append("g")
+            .selectAll("dot")
+            .data(data)
+            .enter()
+            .append("circle")
+            .attr("class", "myCircle")
+            .attr("cx", function(d) { return x(d[0]) } )
+            .attr("cy", function(d) { return y(d[1]) } )
+            .attr("r", 8)
+            .attr("stroke", "#69b3a2")
+            .attr("stroke-width", 3)
+            .attr("fill", "white")
+            .on("mouseover", mouseover)
+            .on("mousemove", mousemove)
+            .on("mouseleave", mouseleave);
     }
 });
